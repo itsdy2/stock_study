@@ -44,10 +44,10 @@ try:
     PluginModelSetting = P.ModelSetting
 
     # 4. Import and Register Modules
-    from .presenters import ModuleBase, ModuleAnalysis, ModuleLog
+    from .presenters import ModuleBase, ModuleAnalysis
     from .models import ModelStockRefHistory 
     
-    P.set_module_list([ModuleBase, ModuleAnalysis, ModuleLog])
+    P.set_module_list([ModuleBase, ModuleAnalysis])
     
 except Exception as e:
     P.logger.error(f'Exception:{str(e)}')
