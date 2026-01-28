@@ -86,8 +86,21 @@ class ModelKoreanMarket(ModelBase):
     # Options (ATM Price)
     call_atm = Column(Float)
     put_atm = Column(Float)
+    
+    # Options (Investor Volume)
+    # ind=Individual, for=Foreigner, inst=Institution
+    call_vol_ind = Column(Float)
+    call_vol_for = Column(Float)
+    call_vol_inst = Column(Float)
+    
+    put_vol_ind = Column(Float)
+    put_vol_for = Column(Float)
+    put_vol_inst = Column(Float)
+    
+    # Futures (Investor Net Buy Volume/Amount?)
+    # commonly used: Foreigner Net Buy (Amount or Volume)
+    futures_net_for = Column(Float) 
 
-    # Placeholder for future
     individual_buy = Column(Float)
     foreigner_buy = Column(Float)
     institution_buy = Column(Float)
