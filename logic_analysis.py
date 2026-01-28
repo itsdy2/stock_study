@@ -15,7 +15,7 @@ try:
 except ImportError:
     yf = None
 
-from .setup import P, PluginModelSetting
+from .setup import P
 
 class LogicAnalysis:
     

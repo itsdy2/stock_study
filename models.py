@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from plugin import ModelBase
+from plugin import ModelBase, F
 from sqlalchemy import Column, Integer, String, DateTime, Text, desc
 from datetime import datetime
 from .setup import P
