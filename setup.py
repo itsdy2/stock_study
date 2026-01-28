@@ -23,7 +23,7 @@ setting = {
                 'uri': 'analysis',
                 'name': '분석',
                 'list': [
-                    {'uri': 'dashboard', 'name': '대시보드'},
+                    {'uri': 'dashboard', 'name': 'KRX_Fear&Grid'},
                     {'uri': 'list', 'name': 'ETF 상대강도'},
                     {'uri': 'db_kr', 'name': '시장 데이터 (DB)'},
                 ]

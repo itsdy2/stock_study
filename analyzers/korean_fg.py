@@ -6,19 +6,17 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import io
 import base64
-import os
-import datetime
 from sklearn.preprocessing import MinMaxScaler
 from .setup import P
 
-COL_OSC = '#6A5ACD'       
-COL_PRICE = '#2F2F2F'     
+# =============================
+# Constants & Colors
+# =============================
+COL_OSC = '#6A5ACD'       # Fear & Greed
+COL_PRICE = '#2F2F2F'     # Price
+COL_SUPERMA = '#FF8C00'   # SuperMA
+COL_GAP = '#00B3B3'       # Gap%
 GRID_ALPHA = 0.3
-
-try:
-    import yfinance as yf
-except ImportError:
-    yf = None
 
 def fig_to_b64(fig):
     buf = io.BytesIO()
@@ -28,26 +26,54 @@ def fig_to_b64(fig):
     plt.close(fig)
     return img
 
-def get_live_data(ticker, period="1y"):
-    """Fetch live data from yfinance"""
-    if yf is None: return None
-    try:
-        df = yf.download(ticker, period=period, progress=False, threads=False)
-        if df.empty: return None
-        # Flatten columns if multi-index (yfinance update)
-        if isinstance(df.columns, pd.MultiIndex):
-            df = df.xs(ticker, level=1, axis=1) if ticker in df.columns.levels[1] else df
-            # Fallback if structure is different
-            if 'Close' in df.columns and isinstance(df['Close'], pd.DataFrame):
-                 df = df['Close'] # Just take close if confused, but we need OHLC? 
-                 # Actually yfinance returns 'Open', 'High', 'Low', 'Close', 'Volume' columns.
-                 # If flattened:
-        df = df.reset_index()
-        df = df.rename(columns={'Date': 'Date', 'Close': 'Close'}) # Ensure columns
-        return df[['Date', 'Close']]
-    except Exception as e:
-        P.logger.error(f"Live data fetch failed for {ticker}: {e}")
-        return None
+# =============================
+# Indicator Logic (Ported)
+# =============================
+
+def calculate_rsi(df, col, window=10):
+    df = df.copy()
+    delta = df[col].diff()
+    gain = delta.where(delta > 0, 0).rolling(window).mean()
+    loss = -delta.where(delta < 0, 0).rolling(window).mean()
+    rs = gain / loss
+    df['RSI_10'] = 100 - (100 / (1 + rs))
+    return df
+
+def calculate_fear_greed(df, index_col, vix_col, call_col, put_col, bond5_col, bond10_col):
+    df = df.copy()
+
+    df['MA125'] = df[index_col].rolling(125).mean()
+    df['Momentum'] = (df[index_col] - df['MA125']) / df['MA125'] * 100
+    
+    # Safety: replace 0 with nan to avoid division by zero
+    df['PutCall'] = df[put_col] / df[call_col].replace(0, np.nan)
+    
+    df['Volatility'] = df[vix_col]
+    df['BondDiff'] = df[bond10_col] - df[bond5_col]
+
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+    features = ['Momentum','PutCall','Volatility','BondDiff','RSI_10']
+    
+    # Must have all features to calc
+    valid = df.dropna(subset=features).index
+
+    df['Fear_Greed_Index'] = np.nan
+    if len(valid) == 0:
+        return df
+
+    scaler = MinMaxScaler()
+    # Fit only on valid rows
+    df.loc[valid, features] = scaler.fit_transform(df.loc[valid, features])
+
+    df.loc[valid, 'Fear_Greed_Index'] = (
+        df.loc[valid,'Momentum'] * 0.2 +
+        (1 - df.loc[valid,'PutCall']) * 0.2 +
+        (1 - df.loc[valid,'Volatility']) * 0.2 +
+        df.loc[valid,'BondDiff'] * 0.2 +
+        df.loc[valid,'RSI_10'] * 0.2
+    )
+    return df
 
 def calculate_macd(df, col):
     df = df.copy()
@@ -56,25 +82,32 @@ def calculate_macd(df, col):
     macd = ema12 - ema26
     signal = macd.ewm(span=9, adjust=False).mean()
     df['Oscillator'] = macd - signal
-    df['MACD'] = macd
-    df['Signal'] = signal
     return df
 
-def calculate_impulse(df, price_col):
+def add_super_ma_gap(df, price_col, label):
     df = df.copy()
-    df['EMA13'] = df[price_col].ewm(span=13, adjust=False).mean()
-    
-    # MACD for Impulse
+    for w in [20,60,120,200]:
+        df[f'{label}_MA{w}'] = df[price_col].rolling(w).mean()
+    mas = [f'{label}_MA{w}' for w in [20,60,120,200]]
+    df[f'{label}_SuperMA'] = df[mas].mean(axis=1)
+    df[f'{label}_GapPct'] = (df[price_col] - df[f'{label}_SuperMA']) / df[f'{label}_SuperMA'] * 100
+    return df
+
+def add_impulse_components(df, price_col, label):
+    df = df.copy()
+    df[f'{label}_EMA13'] = df[price_col].ewm(span=13, adjust=False).mean()
     ema12 = df[price_col].ewm(span=12, adjust=False).mean()
     ema26 = df[price_col].ewm(span=26, adjust=False).mean()
     macd = ema12 - ema26
     signal = macd.ewm(span=9, adjust=False).mean()
-    df['MACD_Hist'] = macd - signal
-    
+    df[f'{label}_MACD_Hist'] = macd - signal
+    return df
+
+def get_impulse_colors(df, ema_col, macd_col):
     colors = []
-    # Vectorized or loop? Loop is clearer for coloring logic
-    ema = df['EMA13'].values
-    hist = df['MACD_Hist'].values
+    # Vectorized logic might be faster but loop is safe
+    ema = df[ema_col].values
+    hist = df[macd_col].values
     
     for i in range(len(df)):
         if i == 0:
@@ -84,144 +117,175 @@ def calculate_impulse(df, price_col):
         ema_down = ema[i] < ema[i-1]
         hist_up = hist[i] > hist[i-1]
         hist_down = hist[i] < hist[i-1]
-        
-        if ema_up and hist_up: colors.append('green')
-        elif ema_down and hist_down: colors.append('red')
-        else: colors.append('blue')
-    
-    df['Color'] = colors
-    return df
 
-def add_td_setup(df, price_col):
+        if ema_up and hist_up:
+            colors.append('green')
+        elif ema_down and hist_down:
+            colors.append('red')
+        else:
+            colors.append('blue')
+    return colors
+
+def add_td_setup_counts(df, price_col, label='TD'):
+    df = df.copy()
     prices = df[price_col].values
     sell = np.zeros(len(df))
     buy = np.zeros(len(df))
-    
+
     for i in range(len(df)):
         if i >= 4 and prices[i] > prices[i-4]:
             sell[i] = sell[i-1] + 1
-        else: sell[i] = 0
-            
+        else:
+            sell[i] = 0
+
         if i >= 2 and prices[i] < prices[i-2]:
             buy[i] = buy[i-1] + 1
-        else: buy[i] = 0
-        
-    df['TD_Sell'] = sell
-    df['TD_Buy'] = buy
+        else:
+            buy[i] = 0
+
+    df[f'{label}_SellSetup'] = sell
+    df[f'{label}_BuySetup'] = buy
     return df
 
-def plot_impulse(df, price_col, title):
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(df['Date'], df[price_col], color='gray', alpha=0.5, linewidth=1)
-    ax.scatter(df['Date'], df[price_col], c=df['Color'], s=10)
-    ax.set_title(title)
-    ax.grid(True, alpha=0.3)
-    plt.tight_layout()
-    return fig_to_b64(fig)
+# =============================
+# Plotting Functions
+# =============================
 
-def plot_td_setup(df, price_col, title):
-    fig, ax1 = plt.subplots(figsize=(10, 5))
-    ax1.plot(df['Date'], df[price_col], color='black', linewidth=1)
-    ax1.set_ylabel('Price')
-    ax1.grid(True, alpha=0.3)
-    
+def plot_fg(df, price_col, title):
+    fig, ax1 = plt.subplots(figsize=(10, 5)) # Adjusted size for web
+    ax1.plot(df['Date'], df['Oscillator'], color=COL_OSC, linewidth=2, label='Fear & Greed Oscillator')
+    ax1.set_ylabel('Fear & Greed', color=COL_OSC)
+    ax1.tick_params(axis='y', labelcolor=COL_OSC)
+    ax1.grid(True, alpha=GRID_ALPHA)
+
     ax2 = ax1.twinx()
-    ax2.plot(df['Date'], df['TD_Sell'], color='red', linewidth=1, label='Setup Sell (9)')
-    ax2.plot(df['Date'], df['TD_Buy'], color='blue', linewidth=1, label='Setup Buy (9)')
-    ax2.set_ylabel('Count')
-    ax2.legend(loc='upper left')
+    ax2.plot(df['Date'], df[price_col], color=COL_PRICE, linewidth=1, label=price_col)
+    ax2.set_ylabel(price_col, color=COL_PRICE)
+    ax2.tick_params(axis='y', labelcolor=COL_PRICE)
+
+    # Legends
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
     
     plt.title(title)
     plt.tight_layout()
     return fig_to_b64(fig)
 
+def plot_impulse_chart(df, price_col, ema_col, macd_col, title):
+    colors = get_impulse_colors(df, ema_col, macd_col)
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(df['Date'], df[price_col], color=COL_PRICE, linewidth=1)
+    ax.scatter(df['Date'], df[price_col], c=colors, s=10) # Smaller dots
+    ax.grid(True, alpha=GRID_ALPHA)
+    ax.set_title(title)
+    plt.tight_layout()
+    return fig_to_b64(fig)
+
+def plot_demark_daily(df, price_col, title):
+    label = 'TD'
+    fig, ax1 = plt.subplots(figsize=(10, 5))
+
+    ax1.plot(df['Date'], df[price_col], color=COL_PRICE, linewidth=1, label=price_col)
+    ax1.set_ylabel(price_col, color=COL_PRICE)
+    ax1.grid(True, alpha=GRID_ALPHA)
+
+    ax2 = ax1.twinx()
+    ax2.plot(df['Date'], df[f'{label}_SellSetup'], color='red', linewidth=1, label='TD Sell Setup')
+    ax2.plot(df['Date'], df[f'{label}_BuySetup'], color='blue', linewidth=1, label='TD Buy Setup')
+    ax2.set_ylabel('TD Setup Count')
+
+    # lines = ax1.get_lines() + ax2.get_lines()
+    # ax1.legend(lines, [l.get_label() for l in lines], loc='upper left')
+    plt.title(title)
+    plt.tight_layout()
+    return fig_to_b64(fig)
+
+
+# =============================
+# Main Analyze Function
+# =============================
 def analyze(P):
-    """
-    DB-Driven Analyzer: 
-    Uses data from ModelKoreanMarket (collected via logic_collector.py).
-    """
     results = []
     
-    # 1. Fetch from DB
+    # 1. Fetch Data
     try:
         from ..models import ModelKoreanMarket
-        items = ModelKoreanMarket.get_data_by_days(days=365)
+        items = ModelKoreanMarket.get_data_by_days(days=400) # Need > 365 for MA200 + 125 calc
         
         if not items:
-            return {
-                'type': 'text',
-                'title': 'Korean Market Data Error',
-                'data': '데이터베이스에 한국 시장 데이터가 없습니다. (수집 실패 또는 초기화 중)'
-            }
-            
-        # Convert to DataFrame
+            return [{'type': 'text', 'title': 'Data Error', 'data': 'No Data in DB'}]
+
         data_list = []
         for item in items:
             data_list.append({
                 'Date': item.date,
-                'KOSPI': item.kospi,
-                'KOSDAQ': item.kosdaq,
-                'VIX': item.vix,
-                'Bond3Y': item.bond_3y,
-                'Bond10Y': item.bond_10y
+                '코스피': item.kospi,
+                '코스닥': item.kosdaq,
+                '코스피 200 변동성지수': item.vix,
+                '5년 국채선물 추종 지수': item.futures_3y if item.futures_3y else item.bond_3y, # Proxy
+                '10년국채선물지수': item.futures_10y if item.futures_10y else item.bond_10y, # Proxy
+                '최근월물 CALL ATM': item.call_atm if item.call_atm else 1.0, # Avoid div/0
+                '최근월물 PUT ATM': item.put_atm if item.put_atm else 1.0
             })
-        
+            
         df = pd.DataFrame(data_list)
-        df = df.set_index('Date').sort_index()
-        df = df.reset_index() # Impulse/DeMark functions expect 'Date' column
+        df = df.sort_values('Date').reset_index(drop=True)
         
-        # 2. Analyze KOSPI
-        if 'KOSPI' in df.columns:
-            # Dropna for KOSPI
-            df_k = df[['Date', 'KOSPI']].dropna().rename(columns={'KOSPI': 'Close'})
-            if not df_k.empty:
-                df_imp = calculate_impulse(df_k, 'Close')
-                df_td = add_td_setup(df_k, 'Close')
+        # 2. Process KOSPI
+        if '코스피' in df.columns:
+            k = df.copy()
+            k = calculate_rsi(k, '코스피')
+            k = calculate_fear_greed(k, '코스피', '코스피 200 변동성지수', '최근월물 CALL ATM', '최근월물 PUT ATM', '5년 국채선물 추종 지수', '10년국채선물지수')
+            k = calculate_macd(k, 'Fear_Greed_Index')
+            k = add_super_ma_gap(k, '코스피', 'KOSPI')
+            k = add_impulse_components(k, '코스피', 'KOSPI')
+            k = add_td_setup_counts(k, '코스피', 'TD')
+            
+            # Slice recent for plotting
+            k_recent = k[k['Date'] >= k['Date'].max() - pd.DateOffset(months=6)]
+            
+            if not k_recent.empty:
+                # F&G Chart
+                if 'Oscillator' in k_recent.columns:
+                    img_fg = plot_fg(k_recent, '코스피', 'KOSPI – Fear & Greed Oscillator')
+                    results.append({'key':'k_fg', 'type':'image', 'title':'KOSPI F&G', 'data':img_fg, 'order':10})
                 
-                results.append({
-                    'key': 'imp_kospi', 'type': 'image', 'title': 'KOSPI Impulse (DB Data)',
-                    'data': plot_impulse(df_imp, 'Close', 'KOSPI - Elder Impulse'), 'order': 20
-                })
-                results.append({
-                    'key': 'td_kospi', 'type': 'image', 'title': 'KOSPI DeMark TD (DB Data)',
-                    'data': plot_td_setup(df_td, 'Close', 'KOSPI - DeMark TD'), 'order': 21
-                })
-
-        # 3. Analyze KOSDAQ
-        if 'KOSDAQ' in df.columns:
-            df_q = df[['Date', 'KOSDAQ']].dropna().rename(columns={'KOSDAQ': 'Close'})
-            if not df_q.empty:
-                df_imp = calculate_impulse(df_q, 'Close')
-                df_td = add_td_setup(df_q, 'Close')
+                # Impulse Chart
+                img_imp = plot_impulse_chart(k_recent, '코스피', 'KOSPI_EMA13', 'KOSPI_MACD_Hist', 'KOSPI – Impulse System')
+                results.append({'key':'k_imp', 'type':'image', 'title':'KOSPI Impulse', 'data':img_imp, 'order':11})
                 
-                results.append({
-                    'key': 'imp_kosdaq', 'type': 'image', 'title': 'KOSDAQ Impulse (DB Data)',
-                    'data': plot_impulse(df_imp, 'Close', 'KOSDAQ - Elder Impulse'), 'order': 22
-                })
-                results.append({
-                    'key': 'td_kosdaq', 'type': 'image', 'title': 'KOSDAQ DeMark TD (DB Data)',
-                    'data': plot_td_setup(df_td, 'Close', 'KOSDAQ - DeMark TD'), 'order': 23
-                })
+                # DeMark Chart
+                img_td = plot_demark_daily(k_recent, '코스피', 'KOSPI – DeMark TD')
+                results.append({'key':'k_td', 'type':'image', 'title':'KOSPI DeMark', 'data':img_td, 'order':12})
 
-        # 4. Fear & Greed (Placeholder logic for future implementation)
-        # We have VIX and Bonds in DF now.
-        # df['YieldGap'] = df['Bond10Y'] - df['Bond3Y']
-        # can plot this?
-        if 'Bond10Y' in df.columns and 'Bond3Y' in df.columns:
-            df_bond = df[['Date', 'Bond10Y', 'Bond3Y']].dropna()
-            if not df_bond.empty:
-                df_bond['Spread'] = df_bond['Bond10Y'] - df_bond['Bond3Y']
-                # Plot spread?
-                pass
+        # 3. Process KOSDAQ
+        if '코스닥' in df.columns:
+            q = df.copy()
+            q = calculate_rsi(q, '코스닥')
+            q = calculate_fear_greed(q, '코스닥', '코스피 200 변동성지수', '최근월물 CALL ATM', '최근월물 PUT ATM', '5년 국채선물 추종 지수', '10년국채선물지수')
+            q = calculate_macd(q, 'Fear_Greed_Index')
+            q = add_super_ma_gap(q, '코스닥', 'KOSDAQ')
+            q = add_impulse_components(q, '코스닥', 'KOSDAQ')
+            q = add_td_setup_counts(q, '코스닥', 'TD')
+            
+            q_recent = q[q['Date'] >= q['Date'].max() - pd.DateOffset(months=6)]
+            
+            if not q_recent.empty:
+                 if 'Oscillator' in q_recent.columns:
+                    img_fg = plot_fg(q_recent, '코스닥', 'KOSDAQ – Fear & Greed Oscillator')
+                    results.append({'key':'q_fg', 'type':'image', 'title':'KOSDAQ F&G', 'data':img_fg, 'order':20})
+                 
+                 img_imp = plot_impulse_chart(q_recent, '코스닥', 'KOSDAQ_EMA13', 'KOSDAQ_MACD_Hist', 'KOSDAQ – Impulse System')
+                 results.append({'key':'q_imp', 'type':'image', 'title':'KOSDAQ Impulse', 'data':img_imp, 'order':21})
+                 
+                 img_td = plot_demark_daily(q_recent, '코스닥', 'KOSDAQ – DeMark TD')
+                 results.append({'key':'q_td', 'type':'image', 'title':'KOSDAQ DeMark', 'data':img_td, 'order':22})
 
     except Exception as e:
-        P.logger.error(f"Korean DB Analysis Error: {e}")
+        P.logger.error(f"Analysis Error: {e}")
         import traceback
         P.logger.error(traceback.format_exc())
-        return {
-            'type': 'text',
-            'title': 'Analysis Error',
-            'data': str(e)
-        }
-
+        return [{'type': 'text', 'title': 'Analysis Error', 'data': str(e)}]
+        
     return results
