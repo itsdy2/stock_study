@@ -65,6 +65,7 @@ class ModuleAnalysis(PluginModuleBase):
                 return jsonify({'ret':'success', 'msg':'분석 완료'})
         except Exception as e:
             P.logger.error(f'Exception:{str(e)}')
+            P.logger.error(traceback.format_exc())
             return jsonify({'ret':'error', 'msg':str(e)})
 
     def scheduler_function(self):
