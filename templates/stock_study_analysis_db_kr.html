@@ -15,8 +15,10 @@
                 <th>KOSPI</th>
                 <th>KOSDAQ</th>
                 <th>VIX</th>
-                <th>Bond 3Y</th>
-                <th>Bond 10Y</th>
+                <th>Bond 3Y/10Y</th>
+                <th>Fut 3Y/10Y</th>
+                <th>Call Vol (Ind/For)</th>
+                <th>Put Vol (Ind/For)</th>
                 <th>Updated</th>
             </tr>
         </thead>
@@ -27,13 +29,15 @@
                 <td>{{ item.kospi }}</td>
                 <td>{{ item.kosdaq }}</td>
                 <td>{{ item.vix }}</td>
-                <td>{{ item.bond_3y }}</td>
-                <td>{{ item.bond_10y }}</td>
+                <td>{{ item.bond_3y }} / {{ item.bond_10y }}</td>
+                <td>{{ item.futures_3y }} / {{ item.futures_10y }}</td>
+                <td>{{ item.call_vol_ind }} / {{ item.call_vol_for }}</td>
+                <td>{{ item.put_vol_ind }} / {{ item.put_vol_for }}</td>
                 <td>{{ item.created_time.strftime('%H:%M:%S') }}</td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="7" class="text-center">데이터가 없습니다.</td>
+                <td colspan="9" class="text-center">데이터가 없습니다.</td>
             </tr>
             {% endfor %}
         </tbody>

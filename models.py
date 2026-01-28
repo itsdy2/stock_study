@@ -66,7 +66,7 @@ class ModelStockRefHistory(ModelBase):
             P.logger.error(traceback.format_exc())
 
 class ModelKoreanMarket(ModelBase):
-    __tablename__ = 'stock_study_kr_market'
+    __tablename__ = 'stock_study_kr_market_v2'
     __bind_key__ = 'stock_study'
 
     id = Column(Integer, primary_key=True)

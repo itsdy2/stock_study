@@ -1,24 +1,16 @@
 # -*- coding: utf-8 -*-
-import traceback
 from plugin import *
+from .models import ModelStockRefHistory
 
-# 1. Plugin Setup
 setting = {
     'filepath': __file__,
     'use_db': True,
     'use_default_setting': True,
-    'home_module': 'base', 
+    'home_module': 'analysis',
     'menu': {
         'uri': __package__,
-        'name': '주식 투자 참고',
+        'name': '주식 연구',
         'list': [
-            {
-                'uri': 'base',
-                'name': '설정',
-                'list': [
-                    {'uri': 'setting', 'name': '기본 설정'},
-                ]
-            },
             {
                 'uri': 'analysis',
                 'name': '분석',
@@ -29,40 +21,30 @@ setting = {
                 ]
             },
             {
-                'uri': 'log',
-                'name': '로그',
+                'uri': 'base',
+                'name': '설정',
+                'list': [
+                    {'uri': 'setting', 'name': '설정'},
+                ]
             }
         ]
     },
     'default_route': 'normal',
 }
 
-# 2. Create Plugin Instance
 P = create_plugin_instance(setting)
 
 try:
-    # 3. Define ModelSetting
-    PluginModelSetting = P.ModelSetting
-
-    # 4. Import and Register Modules
     from .presenters import ModuleBase, ModuleAnalysis
-    from .models import ModelStockRefHistory 
     
     P.set_module_list([ModuleBase, ModuleAnalysis])
+    P.ModelSetting = P.ModelSetting
     
-    # 5. Explicitly create table if not exists
-    try:
-        from plugin import F
-        with F.app.app_context():
-            if not F.db.engine.has_table(ModelStockRefHistory.__tablename__):
-                ModelStockRefHistory.__table__.create(F.db.engine)
-            if not F.db.engine.has_table('stock_study_kr_market'):
-                from .models import ModelKoreanMarket
-                ModelKoreanMarket.__table__.create(F.db.engine)
-                P.logger.info("Table stock_study_kr_market created explicitly.")
-    except Exception as e:
-        P.logger.error(f"Table creation failed: {str(e)}")
-    
+    # Auto-create table logic is handled by ModelBase usually.
+    # We removed manual creation to rely on SQLAlchemy or just let it init on first usage if configured correctly.
+    # Or strict v2 check if needed.
+        
 except Exception as e:
     P.logger.error(f'Exception:{str(e)}')
+    import traceback
     P.logger.error(traceback.format_exc())
