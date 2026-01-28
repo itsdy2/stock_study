@@ -41,6 +41,7 @@ try:
 
     # 4. Import and Register Modules
     from .presenters import ModuleBase, ModuleAnalysis
+    from .models import ModelStockRefHistory 
     
     P.set_module_list([ModuleBase, ModuleAnalysis])
     
