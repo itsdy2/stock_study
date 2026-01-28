@@ -21,7 +21,7 @@ class ModuleBase(PluginModuleBase):
             arg = P.ModelSetting.to_dict()
             return render_template(
                 f'{P.package_name}_{self.name}_{page}.html',
-                arg=arg
+                arg=arg, P=P
             )
         except Exception as e:
             P.logger.error(f'Exception:{str(e)}')
@@ -45,13 +45,13 @@ class ModuleAnalysis(PluginModuleBase):
                 data = LogicAnalysis.get_dashboard_data()
                 return render_template(
                     f'{P.package_name}_{self.name}_{page}.html',
-                    arg=arg, data=data
+                    arg=arg, data=data, P=P
                 )
             elif page == 'list':
                 data = LogicAnalysis.get_dashboard_data()
                 return render_template(
                     f'{P.package_name}_{self.name}_{page}.html',
-                    arg=arg, data=data
+                    arg=arg, data=data, P=P
                 )
         except Exception as e:
             P.logger.error(f'Exception:{str(e)}')
@@ -77,7 +77,7 @@ class ModuleLog(PluginModuleBase):
 
     def process_menu(self, page, req):
         arg = P.ModelSetting.to_dict()
-        return render_template(f'{P.package_name}_{self.name}_{page}.html', arg=arg)
+        return render_template(f'{P.package_name}_{self.name}_{page}.html', arg=arg, P=P)
 
     def process_ajax(self, sub, req):
         if sub == 'get_log':

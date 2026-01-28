@@ -2,11 +2,9 @@
 from plugin import ModelBase, F
 from sqlalchemy import Column, Integer, String, DateTime, Text, desc
 from datetime import datetime
-from .setup import P
-
 class ModelStockRefHistory(ModelBase):
-    __tablename__ = f'{P.package_name}_history'
-    __bind_key__ = P.package_name
+    __tablename__ = 'stock_study_history'
+    __bind_key__ = 'stock_study'
 
     id = Column(Integer, primary_key=True)
     created_time = Column(DateTime, default=datetime.now)
@@ -24,6 +22,7 @@ class ModelStockRefHistory(ModelBase):
                 query = F.db.session.query(cls).order_by(desc(cls.id))
                 return query.all()
         except Exception as e:
+            from .setup import P
             P.logger.error(f'Exception:{str(e)}')
             return []
 
@@ -34,6 +33,7 @@ class ModelStockRefHistory(ModelBase):
                 query = F.db.session.query(cls).order_by(desc(cls.id)).limit(1)
                 return query.first()
         except Exception as e:
+            from .setup import P
             P.logger.error(f'Exception:{str(e)}')
             return None
 
@@ -45,7 +45,9 @@ class ModelStockRefHistory(ModelBase):
             with F.app.app_context():
                 count = F.db.session.query(cls).filter(cls.created_time < limit_date).delete()
                 F.db.session.commit()
+                from .setup import P
                 P.logger.info(f"Deleted {count} old records (older than {days} days)")
         except Exception as e:
+            from .setup import P
             P.logger.error(f'Exception:{str(e)}')
             P.logger.error(traceback.format_exc())
