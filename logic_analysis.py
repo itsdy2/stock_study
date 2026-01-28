@@ -16,7 +16,6 @@ except ImportError:
     yf = None
 
 from .setup import P, PluginModelSetting
-from .models import ModelStockRefHistory
 
 class LogicAnalysis:
     
@@ -64,6 +63,7 @@ class LogicAnalysis:
             
             # Notifications with De-duplication
             # Logic: Check last DB entry. If it was also "Extreme Fear" and sent recently, skip.
+            from .models import ModelStockRefHistory
             last_db = ModelStockRefHistory.get_last()
             alert_sent = False
             if last_db:
@@ -77,6 +77,7 @@ class LogicAnalysis:
                 data_to_save['last_alert_time'] = current_time
 
             # Save to DB
+            from .models import ModelStockRefHistory
             item = ModelStockRefHistory(json.dumps(data_to_save), plot_b64)
             item.save()
             
@@ -227,6 +228,7 @@ class LogicAnalysis:
 
     @staticmethod
     def get_dashboard_data():
+        from .models import ModelStockRefHistory
         last = ModelStockRefHistory.get_last()
         if last:
             try:
