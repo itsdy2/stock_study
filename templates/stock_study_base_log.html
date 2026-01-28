@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<!-- 로그 뷰어 (FlaskFarm 기본 기능 활용 또는 텍스트 area) -->
+<textarea id="log_area" style="width:100%; height:500px; font-family: monospace;"></textarea>
+
+<script>
+    $(document).ready(function () {
+        // 로그 불러오기 (FlaskFarm 표준 아님, 커스텀 필요시 구현)
+        // 여기서는 단순히 안내 메시지만 표시
+        $('#log_area').val("Log viewer not fully implemented. Check System Log tab.");
+    });
+</script>
+{% endblock %}

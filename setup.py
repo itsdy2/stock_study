@@ -25,6 +25,7 @@ setting = {
                 'name': '설정',
                 'list': [
                     {'uri': 'setting', 'name': '설정'},
+                    {'uri': 'log', 'name': '로그'},
                 ]
             }
         ]

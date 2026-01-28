@@ -20,6 +20,8 @@ class ModuleBase(PluginModuleBase):
     def process_menu(self, page, req):
         try:
             arg = P.ModelSetting.to_dict()
+            if page == 'log':
+                return render_template(f'{P.package_name}_{self.name}_{page}.html', arg=arg)
             return render_template(
                 f'{P.package_name}_{self.name}_{page}.html',
                 arg=arg, P=P
