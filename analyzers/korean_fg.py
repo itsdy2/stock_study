@@ -225,8 +225,8 @@ def analyze(P):
                 '코스피 200 변동성지수': item.vix,
                 '5년 국채선물 추종 지수': item.futures_3y if item.futures_3y else item.bond_3y, # Proxy
                 '10년국채선물지수': item.futures_10y if item.futures_10y else item.bond_10y, # Proxy
-                '최근월물 CALL ATM': item.call_atm if item.call_atm else 1.0, # Avoid div/0
-                '최근월물 PUT ATM': item.put_atm if item.put_atm else 1.0
+                '최근월물 CALL ATM': item.call_atm if (item.call_atm and item.call_atm > 0) else 1.0, 
+                '최근월물 PUT ATM': item.put_atm if (item.put_atm and item.put_atm > 0) else 0.8 # Default to slightly bullish (put < call) if missing
             })
             
         df = pd.DataFrame(data_list)
@@ -235,21 +235,29 @@ def analyze(P):
         # 2. Process KOSPI
         if '코스피' in df.columns:
             k = df.copy()
+            # Basic Indicators always work
             k = calculate_rsi(k, '코스피')
-            k = calculate_fear_greed(k, '코스피', '코스피 200 변동성지수', '최근월물 CALL ATM', '최근월물 PUT ATM', '5년 국채선물 추종 지수', '10년국채선물지수')
-            k = calculate_macd(k, 'Fear_Greed_Index')
+            k = calculate_macd(k, 'Fear_Greed_Index') # Will be empty yet
             k = add_super_ma_gap(k, '코스피', 'KOSPI')
             k = add_impulse_components(k, '코스피', 'KOSPI')
             k = add_td_setup_counts(k, '코스피', 'TD')
+
+            # Fear & Greed (Robust)
+            # Check if we have valid non-proxy data?
+            # If all PutCall are 0.8 (default), Moment might dominate. That's better than crash.
+            k = calculate_fear_greed(k, '코스피', '코스피 200 변동성지수', '최근월물 CALL ATM', '최근월물 PUT ATM', '5년 국채선물 추종 지수', '10년국채선물지수')
             
+            # Re-calc MACD on F&G
+            k = calculate_macd(k, 'Fear_Greed_Index')
+
             # Slice recent for plotting
             k_recent = k[k['Date'] >= k['Date'].max() - pd.DateOffset(months=6)]
             
             if not k_recent.empty:
-                # F&G Chart
-                if 'Oscillator' in k_recent.columns:
-                    img_fg = plot_fg(k_recent, '코스피', 'KOSPI – Fear & Greed Oscillator')
-                    results.append({'key':'k_fg', 'type':'image', 'title':'KOSPI F&G', 'data':img_fg, 'order':10})
+                # F&G Chart (Only if valid)
+                if 'Oscillator' in k_recent.columns and not k_recent['Oscillator'].isnull().all():
+                     img_fg = plot_fg(k_recent, '코스피', 'KOSPI – Fear & Greed Oscillator')
+                     results.append({'key':'k_fg', 'type':'image', 'title':'KOSPI F&G', 'data':img_fg, 'order':10})
                 
                 # Impulse Chart
                 img_imp = plot_impulse_chart(k_recent, '코스피', 'KOSPI_EMA13', 'KOSPI_MACD_Hist', 'KOSPI – Impulse System')
