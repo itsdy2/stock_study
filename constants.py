@@ -3,7 +3,7 @@ OPTS = {
     'use_db': True,
     'use_default_setting': True,
     'menu': {
-        'uri': 'stock_ref',
+        'uri': 'stock_study',
         'name': '주식 투자 참고',
         'list': [
             {

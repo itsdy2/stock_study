@@ -1,6 +1,6 @@
 title: "주식 투자 참고 (Stock Ref)"
 version: "1.0.0"
-package_name: "stock_ref"
+package_name: "stock_study"
 developer: "User"
 description: "한국 시장 Fear & Greed 및 ETF 상대강도 분석"
 home: "https://github.com/flaskfarm/flaskfarm"

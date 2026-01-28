@@ -29,7 +29,7 @@ class ModuleBase(PluginModuleBase):
     
     def setting_save_after(self, change_list):
         if 'analysis_interval' in change_list or 'auto_analysis' in change_list:
-             P.logic.scheduler_stop('analysis') # ModuleAnalysis name is 'analysis'
+             P.logic.scheduler_stop('analysis') 
              P.logic.scheduler_start('analysis')
 
 class ModuleAnalysis(PluginModuleBase):
