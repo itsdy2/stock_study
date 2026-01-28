@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div>
+    {{ macros.m_button_group([['runCollectionBtn', '데이터 수집 실행 (최근 30일)']]) }}
+</div>
+{{ macros.m_hr() }}
+
+<h3>한국 시장 데이터 (최근 30일)</h3>
+<div class="table-responsive">
+    <table class="table table-sm table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>KOSPI</th>
+                <th>KOSDAQ</th>
+                <th>VIX</th>
+                <th>Bond 3Y</th>
+                <th>Bond 10Y</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.date.strftime('%Y-%m-%d') }}</td>
+                <td>{{ item.kospi }}</td>
+                <td>{{ item.kosdaq }}</td>
+                <td>{{ item.vix }}</td>
+                <td>{{ item.bond_3y }}</td>
+                <td>{{ item.bond_10y }}</td>
+                <td>{{ item.created_time.strftime('%H:%M:%S') }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="text-center">데이터가 없습니다.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    $("body").on('click', '#runCollectionBtn', function (e) {
+        e.preventDefault();
+        $.ajax({
+            url: '/{{ P.package_name }}/analysis/ajax/force_collection',
+            type: "POST",
+            cache: false,
+            data: {},
+            dataType: "json",
+            success: function (data) {
+                if (data.ret == 'success') {
+                    notify('수집 완료. 새로고침합니다.', 'success');
+                    setTimeout(function () { window.location.reload(); }, 1000);
+                } else {
+                    notify('실패: ' + data.msg, 'warning');
+                }
+            }
+        });
+    });
+</script>
+
+{% endblock %}

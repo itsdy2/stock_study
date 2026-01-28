@@ -25,6 +25,7 @@ setting = {
                 'list': [
                     {'uri': 'dashboard', 'name': '대시보드'},
                     {'uri': 'list', 'name': 'ETF 상대강도'},
+                    {'uri': 'db_kr', 'name': '시장 데이터 (DB)'},
                 ]
             },
             {

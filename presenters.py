@@ -53,6 +53,16 @@ class ModuleAnalysis(PluginModuleBase):
                     f'{P.package_name}_{self.name}_{page}.html',
                     arg=arg, data=data, P=P
                 )
+            elif page == 'db_kr':
+                from .models import ModelKoreanMarket
+                # Fetch last 30 days
+                items = ModelKoreanMarket.get_data_by_days(30)
+                # Reverse for display (newest first)? get_data_by_days sorts asc.
+                items = sorted(items, key=lambda x: x.date, reverse=True)
+                return render_template(
+                    f'{P.package_name}_{self.name}_{page}.html',
+                    arg=arg, items=items, P=P
+                )
         except Exception as e:
             P.logger.error(f'Exception:{str(e)}')
             P.logger.error(traceback.format_exc())
@@ -67,6 +77,16 @@ class ModuleAnalysis(PluginModuleBase):
             P.logger.error(f'Exception:{str(e)}')
             P.logger.error(traceback.format_exc())
             return jsonify({'ret':'error', 'msg':str(e)})
+            
+        elif sub == 'force_collection':
+            try:
+                from .logic_collector import LogicCollector
+                LogicCollector.sync_market_data(days=30)
+                return jsonify({'ret':'success', 'msg':'수집 완료'})
+            except Exception as e:
+                P.logger.error(f"Collection Error: {e}")
+                P.logger.error(traceback.format_exc())
+                return jsonify({'ret':'error', 'msg':str(e)})
 
     def scheduler_function(self):
         if P.ModelSetting.get_bool('auto_analysis'):
