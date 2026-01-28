@@ -52,9 +52,10 @@ try:
     # 5. Explicitly create table if not exists
     try:
         from plugin import F
-        if not F.db.engine.has_table(ModelStockRefHistory.__tablename__):
-            ModelStockRefHistory.__table__.create(F.db.engine)
-            P.logger.info(f"Table {ModelStockRefHistory.__tablename__} created explicitly.")
+        with F.app.app_context():
+            if not F.db.engine.has_table(ModelStockRefHistory.__tablename__):
+                ModelStockRefHistory.__table__.create(F.db.engine)
+                P.logger.info(f"Table {ModelStockRefHistory.__tablename__} created explicitly.")
     except Exception as e:
         P.logger.error(f"Table creation failed: {str(e)}")
     
