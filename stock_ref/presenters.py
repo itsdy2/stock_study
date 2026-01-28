@@ -1,13 +1,41 @@
 # -*- coding: utf-8 -*-
 from plugin import PluginModuleBase, F
 from flask import render_template, jsonify
-from .setup import P, PluginModelSetting
+from .setup import P
 from .logic_analysis import LogicAnalysis
+
+class ModuleBase(PluginModuleBase):
+    def __init__(self, P):
+        super(ModuleBase, self).__init__(P, name='base', first_menu='setting')
+        self.db_default = {
+            'analysis_interval': '30 8 * * *', 
+            'auto_analysis': 'False',
+            'telegram_token': '',
+            'telegram_chat_id': '',
+            'db_retention_days': '365', 
+        }
+
+    def process_menu(self, page, req):
+        try:
+            arg = P.ModelSetting.to_dict()
+            return render_template(
+                f'{P.package_name}_{self.name}_{page}.html',
+                arg=arg
+            )
+        except Exception as e:
+            P.logger.error(f'Exception:{str(e)}')
+            P.logger.error(traceback.format_exc())
+            return "Error"
+    
+    def setting_save_after(self, change_list):
+        if 'analysis_interval' in change_list or 'auto_analysis' in change_list:
+             P.logic.scheduler_stop('analysis') # ModuleAnalysis name is 'analysis'
+             P.logic.scheduler_start('analysis')
 
 class ModuleAnalysis(PluginModuleBase):
     def __init__(self, P):
         super(ModuleAnalysis, self).__init__(P, name='analysis', first_menu='dashboard')
-        self.set_page_list([]) # No sub-pages yet, just direct menu handling
+        self.set_page_list([]) 
 
     def process_menu(self, page, req):
         try:
@@ -41,4 +69,3 @@ class ModuleAnalysis(PluginModuleBase):
     def scheduler_function(self):
         if P.ModelSetting.get_bool('auto_analysis'):
             LogicAnalysis.process_all()
-

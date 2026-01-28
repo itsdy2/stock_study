@@ -1,40 +1,16 @@
 # -*- coding: utf-8 -*-
 from plugin import *
+from .constants import OPTS
 
-setting = {
-    'filepath': __file__,
-    'use_db': True,
-    'use_default_setting': True,
-    'home_module': 'analysis',
-    'menu': {
-        'uri': __package__,
-        'name': '주식 투자 참고',
-        'list': [
-            {
-                'uri': 'base',
-                'name': '설정',
-                'list': [
-                    {'uri': 'setting', 'name': '기본 설정'},
-                ]
-            },
-            {
-                'uri': 'analysis',
-                'name': '분석',
-                'list': [
-                    {'uri': 'dashboard', 'name': '대시보드'},
-                    {'uri': 'list', 'name': 'ETF 상대강도'},
-                ]
-            }
-        ]
-    },
-    'default_route': 'normal',
-}
+# Current file path setup
+OPTS['filepath'] = __file__
 
-P = create_plugin_instance(setting)
+# Plugin Initialization
+P = create_plugin_instance(OPTS)
+PLUGIN = P
 
 try:
-    from .mod_base import ModuleBase
-    from .mod_analysis import ModuleAnalysis
+    from .presenters import ModuleBase, ModuleAnalysis
     
     P.set_module_list([ModuleBase, ModuleAnalysis])
     
