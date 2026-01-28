@@ -72,6 +72,7 @@ class ModuleAnalysis(PluginModuleBase):
     def process_ajax(self, sub, req):
         try:
             if sub == 'run_analysis':
+                # Run full analysis
                 LogicAnalysis.process_all()
                 return jsonify({'ret':'success', 'msg':'분석 완료'})
             elif sub == 'force_collection':
