@@ -5,10 +5,97 @@
     <h4>최근 업데이트: {{ data['updated_time'] if data and data['updated_time'] else '분석 데이터 없음 (설정에서 실행 필요)' }}</h4>
     {{ macros.m_button_group([['runAnalysisBtn', '즉시 분석 실행']]) }}
 </div>
+{{ macros.m_hr() }}
 
+<!-- Dynamic Content Rendering -->
+{% if data and data['results'] %}
+{% for item in data['results'] %}
+
+<!-- Type: Image (Graph) -->
+{% if item.type == 'image' %}
+<div class="card mb-4 shadow-sm">
+    <div class="card-header font-weight-bold">{{ item.title }}</div>
+    <div class="card-body text-center">
+        <img src="data:image/png;base64, {{ item.data }}" class="img-fluid" style="max-height: 500px;">
+    </div>
+</div>
+
+<!-- Type: Table -->
+{% elif item.type == 'table' %}
+<div class="card mb-4 shadow-sm">
+    <div class="card-header font-weight-bold">{{ item.title }}</div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-striped table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    {% for col in item.columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in item.data %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <!-- Handle both dict (etf) and list rows -->
+                    {% if item.columns %}
+                    <!-- Customized for ETF logic: we map known keys or sequential -->
+                    {% if item.key == 'etf_table' %}
+                    <td>{{ row.name }}</td>
+                    <td>{{ row.ticker }}</td>
+                    <td><strong>{{ row.norm_rs }}</strong></td>
+                    <td>{{ row.raw_rs }}</td>
+                    {% else %}
+                    <!-- Generic fallback if we passed list of lists -->
+                    {% for cell in row %}
+                    <td>{{ cell }}</td>
+                    {% endfor %}
+                    {% endif %}
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Type: Card Pair (Special for F&G) -->
+{% elif item.type == 'card_pair' %}
+<div class="mb-4">
+    <h4>{{ item.title }}</h4>
+    <div class="row">
+        {% for k, v in item.data.items() %}
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header text-uppercase">{{ k }}</div>
+                <div class="card-body">
+                    <h5>점수: {{ v.score }}</h5>
+                    <p>상태: {{ v.status }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Fallback -->
+{% else %}
+<div class="alert alert-warning">Unknown Item Type: {{ item.type }} ({{ item.title }})</div>
+{% endif %}
+
+{% endfor %}
+{% else %}
+<div class="alert alert-info">표시할 데이터가 없습니다. 분석을 실행해 주세요.</div>
+{% endif %}
+
+
+<!-- AJAX Script -->
 <script>
     $("body").on('click', '#runAnalysisBtn', function (e) {
         e.preventDefault();
+        $('#runAnalysisBtn').html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 분석 중...').prop('disabled', true);
+
         $.ajax({
             url: '/{{ P.package_name }}/analysis/ajax/run_analysis',
             type: "POST",
@@ -21,65 +108,15 @@
                     setTimeout(function () { window.location.reload(); }, 2000);
                 } else {
                     notify(data.msg, 'warning');
+                    $('#runAnalysisBtn').html('즉시 분석 실행').prop('disabled', false);
                 }
+            },
+            error: function (xhr, status, error) {
+                notify('오류 발생: ' + error, 'danger');
+                $('#runAnalysisBtn').html('즉시 분석 실행').prop('disabled', false);
             }
         });
     });
 </script>
-
-{% if data and data['etf_rs'] %}
-{{ macros.m_hr() }}
-<h3>ETF 상대강도 Top 5</h3>
-<table class="table table-sm table-striped table-hover">
-    <thead>
-        <tr>
-            <th>순위</th>
-            <th>티커</th>
-            <th>이름</th>
-            <th>Normalized RS</th>
-            <th>Raw RS</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in data['etf_rs'][:5] %}
-        <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ item.ticker }}</td>
-            <td>{{ item.name }}</td>
-            <td><strong>{{ item.norm_rs }}</strong></td>
-            <td>{{ item.raw_rs }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<div>
-    <a href="/{{ package_name }}/analysis/list" class="btn btn-sm btn-outline-primary">전체 목록 보기</a>
-</div>
-{% endif %}
-
-{% if data and data['fear_greed'] %}
-{{ macros.m_hr() }}
-<h3>Fear & Greed (Beta)</h3>
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">KOSPI</div>
-            <div class="card-body">
-                <h5>점수: {{ data['fear_greed']['kospi']['score'] }}</h5>
-                <p>상태: {{ data['fear_greed']['kospi']['status'] }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">KOSDAQ</div>
-            <div class="card-body">
-                <h5>점수: {{ data['fear_greed']['kosdaq']['score'] }}</h5>
-                <p>상태: {{ data['fear_greed']['kosdaq']['status'] }}</p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 {% endblock %}
