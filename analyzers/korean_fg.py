@@ -137,55 +137,91 @@ def plot_td_setup(df, price_col, title):
 
 def analyze(P):
     """
-    Hybrid Analyzer: 
-    1. YFinance for Live Price-based indicators (Impulse, DeMark)
-    2. Excel for Historical Fear & Greed (if available)
+    DB-Driven Analyzer: 
+    Uses data from ModelKoreanMarket (collected via logic_collector.py).
     """
     results = []
     
-    # 1. LIVE DATA Analysis (KOSPI/KOSDAQ)
-    if yf:
-        indices = [('^KS11', 'KOSPI'), ('^KQ11', 'KOSDAQ')]
-        for ticker, name in indices:
-            df = get_live_data(ticker, period="1y")
-            if df is not None:
-                # Impulse
-                df_imp = calculate_impulse(df, 'Close')
-                # DeMark
-                df_td = add_td_setup(df, 'Close')
-                
-                # Plot Impulse
-                img_imp = plot_impulse(df_imp, 'Close', f'{name} - Elder Impulse (Live)')
-                results.append({
-                    'key': f'imp_{name}', 'type': 'image', 'title': f'{name} Impulse (Live)',
-                    'data': img_imp, 'order': 20
-                })
-                
-                # Plot TD
-                img_td = plot_td_setup(df_td, 'Close', f'{name} - DeMark TD (Live)')
-                results.append({
-                    'key': f'td_{name}', 'type': 'image', 'title': f'{name} DeMark TD (Live)',
-                    'data': img_td, 'order': 21
-                })
-                
-    # 2. EXCEL DATA Analysis (Fear & Greed)
-    data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'fear_greed_data.xlsx')
-    if os.path.exists(data_path):
-        try:
-            # Need openpyxl
-            import openpyxl
-            k_df = pd.read_excel(data_path, sheet_name='KOSPI')
-            q_df = pd.read_excel(data_path, sheet_name='KOSDAQ')
+    # 1. Fetch from DB
+    try:
+        from ..models import ModelKoreanMarket
+        items = ModelKoreanMarket.get_data_by_days(days=365)
+        
+        if not items:
+            return {
+                'type': 'text',
+                'title': 'Korean Market Data Error',
+                'data': '데이터베이스에 한국 시장 데이터가 없습니다. (수집 실패 또는 초기화 중)'
+            }
             
-            # Simple Processing for F&G Oscillator visualization
-            # Assuming file has pre-calc columns or we calc them?
-            # The user's script calculated everything. We need to duplicate that if we want F&G.
-            # For now, let's just assume we can read columns if they exist, or skip.
-            # Simplified: Use existing script logic if possible, or just plot Price vs Oscillator if pre-calced.
-            pass 
-            # (Limitation: F&G calc logic is complex and needs many columns. 
-            #  If user updates Excel, it works. Automation of this part is pending.)
-        except Exception as e:
-            P.logger.error(f"Excel read error: {e}")
+        # Convert to DataFrame
+        data_list = []
+        for item in items:
+            data_list.append({
+                'Date': item.date,
+                'KOSPI': item.kospi,
+                'KOSDAQ': item.kosdaq,
+                'VIX': item.vix,
+                'Bond3Y': item.bond_3y,
+                'Bond10Y': item.bond_10y
+            })
+        
+        df = pd.DataFrame(data_list)
+        df = df.set_index('Date').sort_index()
+        df = df.reset_index() # Impulse/DeMark functions expect 'Date' column
+        
+        # 2. Analyze KOSPI
+        if 'KOSPI' in df.columns:
+            # Dropna for KOSPI
+            df_k = df[['Date', 'KOSPI']].dropna().rename(columns={'KOSPI': 'Close'})
+            if not df_k.empty:
+                df_imp = calculate_impulse(df_k, 'Close')
+                df_td = add_td_setup(df_k, 'Close')
+                
+                results.append({
+                    'key': 'imp_kospi', 'type': 'image', 'title': 'KOSPI Impulse (DB Data)',
+                    'data': plot_impulse(df_imp, 'Close', 'KOSPI - Elder Impulse'), 'order': 20
+                })
+                results.append({
+                    'key': 'td_kospi', 'type': 'image', 'title': 'KOSPI DeMark TD (DB Data)',
+                    'data': plot_td_setup(df_td, 'Close', 'KOSPI - DeMark TD'), 'order': 21
+                })
+
+        # 3. Analyze KOSDAQ
+        if 'KOSDAQ' in df.columns:
+            df_q = df[['Date', 'KOSDAQ']].dropna().rename(columns={'KOSDAQ': 'Close'})
+            if not df_q.empty:
+                df_imp = calculate_impulse(df_q, 'Close')
+                df_td = add_td_setup(df_q, 'Close')
+                
+                results.append({
+                    'key': 'imp_kosdaq', 'type': 'image', 'title': 'KOSDAQ Impulse (DB Data)',
+                    'data': plot_impulse(df_imp, 'Close', 'KOSDAQ - Elder Impulse'), 'order': 22
+                })
+                results.append({
+                    'key': 'td_kosdaq', 'type': 'image', 'title': 'KOSDAQ DeMark TD (DB Data)',
+                    'data': plot_td_setup(df_td, 'Close', 'KOSDAQ - DeMark TD'), 'order': 23
+                })
+
+        # 4. Fear & Greed (Placeholder logic for future implementation)
+        # We have VIX and Bonds in DF now.
+        # df['YieldGap'] = df['Bond10Y'] - df['Bond3Y']
+        # can plot this?
+        if 'Bond10Y' in df.columns and 'Bond3Y' in df.columns:
+            df_bond = df[['Date', 'Bond10Y', 'Bond3Y']].dropna()
+            if not df_bond.empty:
+                df_bond['Spread'] = df_bond['Bond10Y'] - df_bond['Bond3Y']
+                # Plot spread?
+                pass
+
+    except Exception as e:
+        P.logger.error(f"Korean DB Analysis Error: {e}")
+        import traceback
+        P.logger.error(traceback.format_exc())
+        return {
+            'type': 'text',
+            'title': 'Analysis Error',
+            'data': str(e)
+        }
 
     return results
