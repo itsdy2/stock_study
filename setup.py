@@ -49,6 +49,15 @@ try:
     
     P.set_module_list([ModuleBase, ModuleAnalysis])
     
+    # 5. Explicitly create table if not exists
+    try:
+        from plugin import F
+        if not F.db.engine.has_table(ModelStockRefHistory.__tablename__):
+            ModelStockRefHistory.__table__.create(F.db.engine)
+            P.logger.info(f"Table {ModelStockRefHistory.__tablename__} created explicitly.")
+    except Exception as e:
+        P.logger.error(f"Table creation failed: {str(e)}")
+    
 except Exception as e:
     P.logger.error(f'Exception:{str(e)}')
     P.logger.error(traceback.format_exc())

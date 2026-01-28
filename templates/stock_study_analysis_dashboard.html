@@ -3,7 +3,29 @@
 
 <div>
     <h4>최근 업데이트: {{ data['updated_time'] if data and data['updated_time'] else '분석 데이터 없음 (설정에서 실행 필요)' }}</h4>
+    {{ macros.m_button_group([['runAnalysisBtn', '즉시 분석 실행']]) }}
 </div>
+
+<script>
+    $("body").on('click', '#runAnalysisBtn', function (e) {
+        e.preventDefault();
+        $.ajax({
+            url: '/{{ P.package_name }}/analysis/ajax/run_analysis',
+            type: "POST",
+            cache: false,
+            data: {},
+            dataType: "json",
+            success: function (data) {
+                if (data.ret == 'success') {
+                    notify(data.msg, 'success');
+                    setTimeout(function () { window.location.reload(); }, 2000);
+                } else {
+                    notify(data.msg, 'warning');
+                }
+            }
+        });
+    });
+</script>
 
 {% if data and data['etf_rs'] %}
 {{ macros.m_hr() }}
