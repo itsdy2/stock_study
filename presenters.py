@@ -4,6 +4,7 @@ import os
 from flask import render_template, jsonify
 from .setup import P
 from .logic_analysis import LogicAnalysis
+import traceback
 
 class ModuleBase(PluginModuleBase):
     def __init__(self, P):
@@ -73,20 +74,14 @@ class ModuleAnalysis(PluginModuleBase):
             if sub == 'run_analysis':
                 LogicAnalysis.process_all()
                 return jsonify({'ret':'success', 'msg':'분석 완료'})
+            elif sub == 'force_collection':
+                from .logic_collector import LogicCollector
+                LogicCollector.sync_market_data(days=30)
+                return jsonify({'ret':'success', 'msg':'수집 완료'})
         except Exception as e:
             P.logger.error(f'Exception:{str(e)}')
             P.logger.error(traceback.format_exc())
             return jsonify({'ret':'error', 'msg':str(e)})
-            
-        elif sub == 'force_collection':
-            try:
-                from .logic_collector import LogicCollector
-                LogicCollector.sync_market_data(days=30)
-                return jsonify({'ret':'success', 'msg':'수집 완료'})
-            except Exception as e:
-                P.logger.error(f"Collection Error: {e}")
-                P.logger.error(traceback.format_exc())
-                return jsonify({'ret':'error', 'msg':str(e)})
 
     def scheduler_function(self):
         if P.ModelSetting.get_bool('auto_analysis'):
