@@ -79,6 +79,14 @@ class ModelKoreanMarket(ModelBase):
     bond_3y = Column(Float) # Yield
     bond_10y = Column(Float) # Yield
     
+    # Futures (Price/Index)
+    futures_3y = Column(Float) 
+    futures_10y = Column(Float)
+    
+    # Options (ATM Price)
+    call_atm = Column(Float)
+    put_atm = Column(Float)
+
     # Placeholder for future
     individual_buy = Column(Float)
     foreigner_buy = Column(Float)
