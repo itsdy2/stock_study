@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+    {{ macros.m_button_group([['refreshLogBtn', '새로고침']])}}
+    {{ macros.m_hr() }}
+    <textarea id="log_textarea" class="form-control" rows="20" disabled></textarea>
+</div>
+
+<script>
+    $(document).ready(function () {
+        get_log();
+    });
+
+    $("body").on('click', '#refreshLogBtn', function (e) {
+        e.preventDefault();
+        get_log();
+    });
+
+    function get_log() {
+        $.ajax({
+            url: '/{{ P.package_name }}/log/ajax/get_log',
+            type: "POST",
+            cache: false,
+            data: {},
+            dataType: "json",
+            success: function (data) {
+                if (data.ret == 'success') {
+                    $('#log_textarea').val(data.data);
+                    // Scroll to bottom
+                    var textarea = document.getElementById('log_textarea');
+                    textarea.scrollTop = textarea.scrollHeight;
+                } else {
+                    notify('로그를 불러오는데 실패했습니다.', 'warning');
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

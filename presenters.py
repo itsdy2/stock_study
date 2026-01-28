@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from plugin import PluginModuleBase, F
+import os
 from flask import render_template, jsonify
 from .setup import P
 from .logic_analysis import LogicAnalysis
@@ -69,3 +70,30 @@ class ModuleAnalysis(PluginModuleBase):
     def scheduler_function(self):
         if P.ModelSetting.get_bool('auto_analysis'):
             LogicAnalysis.process_all()
+
+class ModuleLog(PluginModuleBase):
+    def __init__(self, P):
+        super(ModuleLog, self).__init__(P, name='log', first_menu='main')
+
+    def process_menu(self, page, req):
+        arg = P.ModelSetting.to_dict()
+        return render_template(f'{P.package_name}_{self.name}_{page}.html', arg=arg)
+
+    def process_ajax(self, sub, req):
+        if sub == 'get_log':
+            try:
+                log_file = None
+                for handler in P.logger.handlers:
+                    if hasattr(handler, 'baseFilename'):
+                        log_file = handler.baseFilename
+                        break
+                
+                if log_file and os.path.exists(log_file):
+                    with open(log_file, 'r', encoding='utf-8') as f:
+                        data = f.read()
+                        # Reverse lines? or just send?
+                        # Usually send last N lines?
+                        return jsonify({'ret':'success', 'data':data})
+            except Exception as e:
+                return jsonify({'ret':'error', 'msg':str(e)})
+

@@ -26,6 +26,10 @@ setting = {
                     {'uri': 'dashboard', 'name': '대시보드'},
                     {'uri': 'list', 'name': 'ETF 상대강도'},
                 ]
+            },
+            {
+                'uri': 'log',
+                'name': '로그',
             }
         ]
     },
@@ -40,10 +44,10 @@ try:
     PluginModelSetting = P.ModelSetting
 
     # 4. Import and Register Modules
-    from .presenters import ModuleBase, ModuleAnalysis
+    from .presenters import ModuleBase, ModuleAnalysis, ModuleLog
     from .models import ModelStockRefHistory 
     
-    P.set_module_list([ModuleBase, ModuleAnalysis])
+    P.set_module_list([ModuleBase, ModuleAnalysis, ModuleLog])
     
 except Exception as e:
     P.logger.error(f'Exception:{str(e)}')
