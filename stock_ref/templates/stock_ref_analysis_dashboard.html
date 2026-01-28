@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div>
+    <h4>최근 업데이트: {{ data['updated_time'] if data and data['updated_time'] else '분석 데이터 없음 (설정에서 실행 필요)' }}</h4>
+</div>
+
+{% if data and data['etf_rs'] %}
+{{ macros.m_hr() }}
+<h3>ETF 상대강도 Top 5</h3>
+<table class="table table-sm table-striped table-hover">
+    <thead>
+        <tr>
+            <th>순위</th>
+            <th>티커</th>
+            <th>이름</th>
+            <th>Normalized RS</th>
+            <th>Raw RS</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in data['etf_rs'][:5] %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ item.ticker }}</td>
+            <td>{{ item.name }}</td>
+            <td><strong>{{ item.norm_rs }}</strong></td>
+            <td>{{ item.raw_rs }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div>
+    <a href="/{{ package_name }}/analysis/list" class="btn btn-sm btn-outline-primary">전체 목록 보기</a>
+</div>
+{% endif %}
+
+{% if data and data['fear_greed'] %}
+{{ macros.m_hr() }}
+<h3>Fear & Greed (Beta)</h3>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">KOSPI</div>
+            <div class="card-body">
+                <h5>점수: {{ data['fear_greed']['kospi']['score'] }}</h5>
+                <p>상태: {{ data['fear_greed']['kospi']['status'] }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">KOSDAQ</div>
+            <div class="card-body">
+                <h5>점수: {{ data['fear_greed']['kosdaq']['score'] }}</h5>
+                <p>상태: {{ data['fear_greed']['kosdaq']['status'] }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>한국 ETF 상대강도 분석 결과</h3>
+{% if data and data['updated_time'] %}
+<p class="text-muted">업데이트: {{ data['updated_time'] }}</p>
+
+<table id="result_table" class="table table-sm table-striped table-hover">
+    <thead>
+        <tr>
+            <th>순위</th>
+            <th>티커</th>
+            <th>이름</th>
+            <th>Normalized RS</th>
+            <th>Raw RS</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in data['etf_rs'] %}
+        <tr class="{{ 'table-success' if item.norm_rs >= 70 else '' }}">
+            <td>{{ loop.index }}</td>
+            <td>{{ item.ticker }}</td>
+            <td>{{ item.name }}</td>
+            <td><strong>{{ item.norm_rs }}</strong></td>
+            <td>{{ item.raw_rs }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="alert alert-warning">
+    분석 데이터가 없습니다. [설정] 메뉴에서 분석을 실행해주세요.
+</div>
+{% endif %}
+
+{% endblock %}

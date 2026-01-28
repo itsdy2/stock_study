@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+
+{{ macros.m_button_group([['globalSettingSaveBtn', '설정 저장'], ['globalRunBtn', '분석 즉시 실행']]) }}
+{{ macros.m_hr() }}
+
+<form id='setting' name='setting'>
+    {{ macros.setting_checkbox('auto_analysis', '자동 분석', value=arg['auto_analysis'], desc='켜면 매일 지정된 시간에 자동으로 분석을
+    수행합니다.') }}
+    {{ macros.setting_input_text('analysis_interval', '스케줄링', value=arg['analysis_interval'], desc=['Cron 형식 (분 시 * *
+    *)', '예: 30 8 * * * (매일 08:30)']) }}
+    {{ macros.m_hr() }}
+    {{ macros.setting_input_text('telegram_token', '텔레그램 봇 토큰', value=arg['telegram_token'], desc=['알림을 받을 봇의 Token'])
+    }}
+    {{ macros.setting_input_text('telegram_chat_id', '텔레그램 Chat ID', value=arg['telegram_chat_id'], desc=['알림을 받을 Chat
+    ID']) }}
+    {{ macros.setting_input_text('db_retention_days', 'DB 보관 기간 (일)', value=arg['db_retention_days'], desc=['이 기간보다 오래된
+    데이터는 자동 삭제됩니다.']) }}
+</form>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+    });
+
+    $("body").on('click', '#globalRunBtn', function (e) {
+        e.preventDefault();
+        $.ajax({
+            url: '/{{ package_name }}/analysis/ajax/run_analysis',
+            type: "POST",
+            cache: false,
+            data: {},
+            dataType: "json",
+            success: function (data) {
+                if (data.ret == 'success') {
+                    notify('분석이 시작되었습니다. 완료 시 로그를 확인하세요.', 'success');
+                } else {
+                    notify('실패: ' + data.msg, 'warning');
+                }
+            }
+        });
+    });
+</script>
+
+{% endblock %}
