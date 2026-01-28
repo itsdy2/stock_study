@@ -22,6 +22,17 @@ class LogicAnalysis:
         """
         try:
             P.logger.info("Starting Modular Analysis...")
+            
+            # 0. Sync Data (Auto-collect)
+            try:
+                from .logic_collector import LogicCollector
+                # Limit to 30 days sync for speed on daily run, or 365 on first?
+                # Let's do 365 if DB empty, else small. LogicCollector can handle it?
+                # Just call it, it upserts.
+                LogicCollector.sync_market_data(days=100) 
+            except Exception as ce:
+                P.logger.error(f"Data Collection Failed: {ce}")
+
             current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
             results_list = []

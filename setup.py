@@ -55,7 +55,10 @@ try:
         with F.app.app_context():
             if not F.db.engine.has_table(ModelStockRefHistory.__tablename__):
                 ModelStockRefHistory.__table__.create(F.db.engine)
-                P.logger.info(f"Table {ModelStockRefHistory.__tablename__} created explicitly.")
+            if not F.db.engine.has_table('stock_study_kr_market'):
+                from .models import ModelKoreanMarket
+                ModelKoreanMarket.__table__.create(F.db.engine)
+                P.logger.info("Table stock_study_kr_market created explicitly.")
     except Exception as e:
         P.logger.error(f"Table creation failed: {str(e)}")
     

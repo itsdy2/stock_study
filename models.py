@@ -8,12 +8,22 @@ class ModelStockRefHistory(ModelBase):
 
     id = Column(Integer, primary_key=True)
     created_time = Column(DateTime, default=datetime.now)
-    data_json = Column(Text) # JSON string of analysis results
-    image_b64 = Column(Text) # Base64 string of plot (optional or combined)
+    data_json = Column(Text) # JSON data for dashboard
+    image_b64 = Column(Text) # Legacy, keeping for compatibility
     
-    def __init__(self, data_json, image_b64=None):
+    def __init__(self, data_json, image_b64):
         self.data_json = data_json
         self.image_b64 = image_b64
+        self.created_time = datetime.now()
+        
+    def save(self):
+        try:
+            with F.app.app_context():
+                F.db.session.add(self)
+                F.db.session.commit()
+        except Exception as e:
+            from .setup import P
+            P.logger.error(f'Exception:{str(e)}')
 
     @classmethod
     def get_list(cls, by_dict=False):
