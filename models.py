@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from plugin import ModelBase, F
-from sqlalchemy import Column, Integer, String, DateTime, Text, desc
+from sqlalchemy import Column, Integer, String, DateTime, Text, desc, Float
 from datetime import datetime
 import traceback
 import json
@@ -72,17 +72,17 @@ class ModelKoreanMarket(ModelBase):
     id = Column(Integer, primary_key=True)
     date = Column(DateTime, unique=True) # YYYY-MM-DD
     
-    kospi = Column(ModelBase.db.Float)
-    kosdaq = Column(ModelBase.db.Float)
-    vix = Column(ModelBase.db.Float) # KOSPI 200 Volatility
+    kospi = Column(Float)
+    kosdaq = Column(Float)
+    vix = Column(Float) # KOSPI 200 Volatility
     
-    bond_3y = Column(ModelBase.db.Float) # Yield
-    bond_10y = Column(ModelBase.db.Float) # Yield
+    bond_3y = Column(Float) # Yield
+    bond_10y = Column(Float) # Yield
     
     # Placeholder for future
-    individual_buy = Column(ModelBase.db.Float)
-    foreigner_buy = Column(ModelBase.db.Float)
-    institution_buy = Column(ModelBase.db.Float)
+    individual_buy = Column(Float)
+    foreigner_buy = Column(Float)
+    institution_buy = Column(Float)
     
     created_time = Column(DateTime, default=datetime.now)
 
