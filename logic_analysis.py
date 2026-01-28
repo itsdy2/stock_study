@@ -10,7 +10,11 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import yfinance as yf
+try:
+    import yfinance as yf
+except ImportError:
+    yf = None
+
 from .setup import P, PluginModelSetting
 from .models import ModelStockRefHistory
 
@@ -88,6 +92,10 @@ class LogicAnalysis:
     @staticmethod
     def analyze_etf_rs():
         """Calculate Mansfield RS for ETFs (with error handling)"""
+        if yf is None:
+            P.logger.error("yfinance module not found. Please install requirements.")
+            return []
+
         tickers = list(LogicAnalysis.KOREA_INDUSTRY_ETFS.keys())
         try:
             # Download with retry logic
